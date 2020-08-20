@@ -3,12 +3,16 @@ import { Transform } from '@graphql-tools/utils';
 import TransformObjectFields from './TransformObjectFields';
 
 export default class FilterFieldDirectives implements Transform {
-  private readonly transformer: TransformObjectFields;
+  private readonly filter: (directiveNode: DirectiveNode) => boolean;
 
-  constructor(filter: (dir: DirectiveNode) => boolean) {
-    this.transformer = new TransformObjectFields(
+  constructor(filter: (directiveNode: DirectiveNode) => boolean) {
+    this.filter = filter;
+  }
+
+  public transformSchema(originalSchema: GraphQLSchema): GraphQLSchema {
+    const transformer = new TransformObjectFields(
       (_typeName: string, _fieldName: string, fieldConfig: GraphQLFieldConfig<any, any>) => {
-        const keepDirectives = fieldConfig.astNode.directives.filter(dir => filter(dir));
+        const keepDirectives = fieldConfig.astNode.directives.filter(directiveNode => this.filter(directiveNode));
 
         if (keepDirectives.length !== fieldConfig.astNode.directives.length) {
           fieldConfig = {
@@ -26,9 +30,7 @@ export default class FilterFieldDirectives implements Transform {
         }
       }
     );
-  }
 
-  public transformSchema(originalSchema: GraphQLSchema): GraphQLSchema {
-    return this.transformer.transformSchema(originalSchema);
+    return transformer.transformSchema(originalSchema);
   }
 }
